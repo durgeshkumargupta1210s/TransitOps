@@ -1,64 +1,210 @@
-import React, { useEffect, useState } from 'react'
-import api from '../../api/axios'
-import VehicleForm from './VehicleForm'
+import { useEffect, useState } from "react";
+import api from "../../api/axios";
+import VehicleForm from "./VehicleForm";
+import { FiEdit2, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
 
-export default function Vehicles(){
+export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
 
-  const load = async (p=1, l=20, s='')=>{
-    setLoading(true);
-    try{
-      const res = await api.get('/vehicles', { params: { page: p, limit: l, search: s } });
+  const [search, setSearch] = useState("");
+
+  const loadVehicles = async () => {
+    try {
+      const res = await api.get("/vehicles", {
+        params: { search },
+      });
+
       setVehicles(res.data.items || res.data);
-      setTotal(res.data.total || (res.data.items? res.data.items.length: (res.data.length||0)));
-    }catch(err){}
-    setLoading(false);
-  }
-  useEffect(()=>{ load(1, limit, ''); },[]);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
-  const onEdit = (v)=>{ setEditing(v); setShowForm(true); }
-  const onDelete = async (id)=>{ if(!confirm('Delete?'))return; await api.delete(`/vehicles/${id}`); load(); }
+  useEffect(() => {
+    loadVehicles();
+  }, [search]);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this vehicle?")) return;
+
+    try {
+      await api.delete(`/vehicles/${id}`);
+      loadVehicles();
+    } catch (err) {
+      alert("Unable to delete vehicle");
+    }
+  };
 
   return (
-    <div className="flex">
-      <div className="w-64">{/* sidebar placeholder */}</div>
-      <div className="flex-1 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Vehicles</h2>
-          <button onClick={()=>{ setEditing(null); setShowForm(true); }} className="px-3 py-1 bg-blue-600 text-white rounded">Add Vehicle</button>
+    <div>
+
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+
+        <div>
+          <h1 className="text-3xl font-bold">
+            Vehicle Management
+          </h1>
+
+          <p className="text-slate-500">
+            Manage all fleet vehicles
+          </p>
         </div>
-        {showForm && <div className="mb-4 p-4 bg-white rounded shadow"><VehicleForm initial={editing||{}} onSaved={()=>{ setShowForm(false); load(); }} onCancel={()=>setShowForm(false)} /></div>}
-        <div className="bg-white rounded shadow overflow-auto">
-          <table className="w-full text-left">
-            <thead><tr><th className="p-2">Reg</th><th>Model</th><th>Type</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {vehicles.map(v=> (
-                <tr key={v._id} className="border-t"><td className="p-2">{v.registrationNumber}</td><td>{v.vehicleModel}</td><td>{v.vehicleType}</td><td>{v.maximumLoadCapacity}</td><td>{v.status}</td><td className="p-2"><button onClick={()=>onEdit(v)} className="mr-2 text-blue-600">Edit</button><button onClick={()=>onDelete(v._id)} className="text-red-600">Delete</button></td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-gray-600">Total: {total}</div>
-          <div className="flex items-center space-x-2">
-            <select value={limit} onChange={e=>{ setLimit(parseInt(e.target.value)); setPage(1); load(1, parseInt(e.target.value), search); }} className="p-1 border">
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <button disabled={page<=1} onClick={()=>{ setPage(p=>Math.max(1,p-1)); load(Math.max(1,page-1), limit, search); }} className="px-2 py-1 border rounded">Prev</button>
-            <div className="px-2">{page}</div>
-            <button disabled={vehicles.length<limit} onClick={()=>{ setPage(p=>p+1); load(page+1, limit, search); }} className="px-2 py-1 border rounded">Next</button>
-          </div>
-        </div>
+
+        <button
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="btn-primary flex items-center gap-2"
+        >
+          <FiPlus />
+          Add Vehicle
+        </button>
+
       </div>
+
+      {showForm && (
+        <div className="card mb-6">
+
+          <VehicleForm
+            initial={editing || {}}
+            onSaved={() => {
+              setShowForm(false);
+              loadVehicles();
+            }}
+            onCancel={() => setShowForm(false)}
+          />
+
+        </div>
+      )}
+
+      <div className="card">
+
+        <div className="mb-5 relative">
+
+          <FiSearch className="absolute left-4 top-3 text-slate-400" />
+
+          <input
+            type="text"
+            placeholder="Search vehicle..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input pl-10"
+          />
+
+        </div>
+
+        <div className="overflow-x-auto">
+
+          <table className="w-full">
+
+            <thead>
+
+              <tr className="border-b">
+
+                <th className="text-left py-3">Registration</th>
+                <th className="text-left py-3">Model</th>
+                <th className="text-left py-3">Type</th>
+                <th className="text-left py-3">Capacity</th>
+                <th className="text-left py-3">Status</th>
+                <th className="text-center py-3">Actions</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {vehicles.length === 0 && (
+                <tr>
+
+                  <td
+                    colSpan={6}
+                    className="text-center py-10 text-slate-400"
+                  >
+                    No vehicles found
+                  </td>
+
+                </tr>
+              )}
+
+              {vehicles.map((vehicle) => (
+
+                <tr
+                  key={vehicle._id}
+                  className="border-b hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                >
+
+                  <td className="py-4 font-medium">
+                    {vehicle.registrationNumber}
+                  </td>
+
+                  <td>{vehicle.vehicleModel}</td>
+
+                  <td>{vehicle.vehicleType}</td>
+
+                  <td>{vehicle.maximumLoadCapacity} kg</td>
+
+                  <td>
+
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold
+                      ${
+                        vehicle.status === "Available"
+                          ? "bg-green-100 text-green-700"
+                          : vehicle.status === "On Trip"
+                          ? "bg-blue-100 text-blue-700"
+                          : vehicle.status === "In Shop"
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-gray-200 text-gray-700"
+                      }`}
+                    >
+                      {vehicle.status}
+                    </span>
+
+                  </td>
+
+                  <td>
+
+                    <div className="flex justify-center gap-2">
+
+                      <button
+                        onClick={() => {
+                          setEditing(vehicle);
+                          setShowForm(true);
+                        }}
+                        className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600"
+                      >
+                        <FiEdit2 />
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          handleDelete(vehicle._id)
+                        }
+                        className="p-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-600"
+                      >
+                        <FiTrash2 />
+                      </button>
+
+                    </div>
+
+                  </td>
+
+                </tr>
+
+              ))}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
     </div>
-  )
+  );
 }

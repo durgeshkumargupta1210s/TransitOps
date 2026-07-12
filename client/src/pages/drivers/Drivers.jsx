@@ -1,55 +1,197 @@
-import React, { useEffect, useState } from 'react'
-import api from '../../api/axios'
-import DriverForm from './DriverForm'
+import { useEffect, useState } from "react";
+import api from "../../api/axios";
+import DriverForm from "./DriverForm";
+import {
+  FiEdit2,
+  FiPlus,
+  FiSearch,
+  FiTrash2,
+} from "react-icons/fi";
 
-export default function Drivers(){
+export default function Drivers() {
   const [drivers, setDrivers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
-  const load = async (p=1, l=20, s='')=>{ try{ const res = await api.get('/drivers', { params: { page: p, limit: l, search: s } }); setDrivers(res.data.items || res.data); }catch(err){} }
-  useEffect(()=>{ load(); },[]);
+  const loadDrivers = async () => {
+    try {
+      const res = await api.get("/drivers", {
+        params: { search },
+      });
 
-  const onEdit = (d)=>{ setEditing(d); setShowForm(true); }
-  const onDelete = async (id)=>{ if(!confirm('Delete?'))return; await api.delete(`/drivers/${id}`); load(); }
+      setDrivers(res.data.items || res.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  useEffect(() => {
+    loadDrivers();
+  }, [search]);
+
+  const deleteDriver = async (id) => {
+    if (!window.confirm("Delete this driver?")) return;
+
+    try {
+      await api.delete(`/drivers/${id}`);
+      loadDrivers();
+    } catch {
+      alert("Unable to delete driver");
+    }
+  };
 
   return (
-    <div className="flex">
-      <div className="w-64">{/* sidebar placeholder */}</div>
-      <div className="flex-1 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Drivers</h2>
-          <button onClick={()=>{ setEditing(null); setShowForm(true); }} className="px-3 py-1 bg-blue-600 text-white rounded">Add Driver</button>
+    <div>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">
+            Driver Management
+          </h1>
+
+          <p className="text-slate-500">
+            Manage drivers and licenses
+          </p>
         </div>
-        {showForm && <div className="mb-4 p-4 bg-white rounded shadow"><DriverForm initial={editing||{}} onSaved={()=>{ setShowForm(false); load(); }} onCancel={()=>setShowForm(false)} /></div>}
-        <div className="bg-white rounded shadow overflow-auto">
-          <table className="w-full text-left">
-            <thead><tr><th className="p-2">Name</th><th>License</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
+
+        <button
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="btn-primary flex items-center gap-2"
+        >
+          <FiPlus />
+          Add Driver
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="card mb-6">
+          <DriverForm
+            initial={editing || {}}
+            onSaved={() => {
+              setShowForm(false);
+              loadDrivers();
+            }}
+            onCancel={() => setShowForm(false)}
+          />
+        </div>
+      )}
+
+      <div className="card">
+        <div className="relative mb-5">
+          <FiSearch className="absolute left-3 top-3 text-slate-400" />
+
+          <input
+            className="input pl-10"
+            placeholder="Search driver..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-3">Name</th>
+                <th className="text-left py-3">License</th>
+                <th className="text-left py-3">Expiry</th>
+                <th className="text-left py-3">Status</th>
+                <th className="text-center py-3">Actions</th>
+              </tr>
+            </thead>
+
             <tbody>
-              {drivers.map(d=> (
-                <tr key={d._id} className="border-t"><td className="p-2">{d.name}</td><td>{d.licenseNumber}</td><td>{new Date(d.licenseExpiryDate).toLocaleDateString()}</td><td>{d.status}</td><td className="p-2"><button onClick={()=>onEdit(d)} className="mr-2 text-blue-600">Edit</button><button onClick={()=>onDelete(d._id)} className="text-red-600">Delete</button></td></tr>
+
+              {drivers.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="text-center py-10 text-slate-400"
+                  >
+                    No Drivers Found
+                  </td>
+                </tr>
+              )}
+
+              {drivers.map((driver) => (
+
+                <tr
+                  key={driver._id}
+                  className="border-b hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                >
+
+                  <td className="py-4 font-medium">
+                    {driver.name}
+                  </td>
+
+                  <td>{driver.licenseNumber}</td>
+
+                  <td>
+                    {driver.licenseExpiryDate
+                      ? new Date(
+                          driver.licenseExpiryDate
+                        ).toLocaleDateString()
+                      : "-"}
+                  </td>
+
+                  <td>
+
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        driver.status === "Available"
+                          ? "bg-green-100 text-green-700"
+                          : driver.status === "On Trip"
+                          ? "bg-blue-100 text-blue-700"
+                          : driver.status === "Off Duty"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {driver.status}
+                    </span>
+
+                  </td>
+
+                  <td>
+
+                    <div className="flex justify-center gap-2">
+
+                      <button
+                        onClick={() => {
+                          setEditing(driver);
+                          setShowForm(true);
+                        }}
+                        className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200"
+                      >
+                        <FiEdit2 />
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          deleteDriver(driver._id)
+                        }
+                        className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
+                      >
+                        <FiTrash2 />
+                      </button>
+
+                    </div>
+
+                  </td>
+
+                </tr>
+
               ))}
+
             </tbody>
+
           </table>
-        </div>
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-gray-600"></div>
-          <div className="flex items-center space-x-2">
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search" className="p-2 border rounded" />
-            <select value={limit} onChange={e=>{ setLimit(parseInt(e.target.value)); setPage(1); load(1, parseInt(e.target.value), search); }} className="p-1 border">
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <button disabled={page<=1} onClick={()=>{ setPage(p=>Math.max(1,p-1)); load(Math.max(1,page-1), limit, search); }} className="px-2 py-1 border rounded">Prev</button>
-            <div className="px-2">{page}</div>
-            <button disabled={drivers.length<limit} onClick={()=>{ setPage(p=>p+1); load(page+1, limit, search); }} className="px-2 py-1 border rounded">Next</button>
-          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
