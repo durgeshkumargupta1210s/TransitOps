@@ -4,8 +4,20 @@ import api from '../../api/axios'
 export default function Maintenance(){
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ vehicle: '', maintenanceType: '', description: '', cost: 0 });
-  const load = async ()=>{ try{ const res = await api.get('/maintenance'); setItems(res.data.items || res.data); }catch(err){ } }
-  useEffect(()=>{ load(); },[]);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  const load = async (p = page, l = limit, s = search, st = status)=>{
+    try{
+      const res = await api.get('/maintenance', { params: { page: p, limit: l, search: s, status: st } });
+      setItems(res.data.items || res.data);
+      setTotal(res.data.total || 0);
+    }catch(err){ }
+  }
+  useEffect(()=>{ load(1, limit, search, status); },[]);
   const onSave = async ()=>{ await api.post('/maintenance', form); setForm({ vehicle: '', maintenanceType: '', description: '', cost: 0 }); load(); }
   const onClose = async (id) => { await api.post(`/maintenance/${id}/close`); load(); }
   const onDelete = async (id) => { if(!confirm('Delete?')) return; await api.delete(`/maintenance/${id}`); load(); }
@@ -14,8 +26,22 @@ export default function Maintenance(){
     <div className="flex">
       <div className="w-64">{/* sidebar */}</div>
       <div className="flex-1 p-6">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
           <h2 className="text-xl font-bold">Maintenance</h2>
+          <div className="flex flex-wrap gap-2">
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search type/description" className="p-2 border rounded" />
+            <select value={status} onChange={e=>setStatus(e.target.value)} className="p-2 border rounded">
+              <option value="">All statuses</option>
+              <option value="Open">Open</option>
+              <option value="Closed">Closed</option>
+            </select>
+            <select value={limit} onChange={e=>{ const v=parseInt(e.target.value); setLimit(v); setPage(1); load(1, v, search, status); }} className="p-2 border rounded">
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <button onClick={()=>load(1, limit, search, status)} className="px-3 py-2 bg-slate-900 text-white rounded">Apply</button>
+          </div>
         </div>
         <div className="mb-4 p-4 bg-white rounded shadow">
           <h3 className="font-semibold mb-2">Open Maintenance</h3>
@@ -36,6 +62,14 @@ export default function Maintenance(){
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+          <div>Total: {total}</div>
+          <div className="flex items-center gap-2">
+            <button disabled={page<=1} onClick={()=>{ const next = Math.max(1, page-1); setPage(next); load(next, limit, search, status); }} className="px-3 py-2 border rounded disabled:opacity-50">Prev</button>
+            <div>Page {page}</div>
+            <button disabled={items.length < limit} onClick={()=>{ const next = page + 1; setPage(next); load(next, limit, search, status); }} className="px-3 py-2 border rounded disabled:opacity-50">Next</button>
+          </div>
         </div>
       </div>
     </div>

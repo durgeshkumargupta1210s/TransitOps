@@ -19,8 +19,8 @@ async function run(){
   console.log('Vehicles created');
 
   await Driver.deleteMany({});
-  await Driver.create({ name: 'John Doe', licenseNumber: 'L-1001', licenseCategory: 'C', licenseExpiryDate: new Date(Date.now() + 1000*60*60*24*365), contactNumber: '555-0100' });
-  await Driver.create({ name: 'Jane Roe', licenseNumber: 'L-1002', licenseCategory: 'B', licenseExpiryDate: new Date(Date.now() + 1000*60*60*24*30), contactNumber: '555-0101' });
+  await Driver.create({ name: 'John Doe', licenseNumber: 'L-1001', licenseCategory: 'C', licenseExpiryDate: new Date(Date.now() + 1000*60*60*24*365), email: 'john.doe@transitops.com', contactNumber: '555-0100' });
+  await Driver.create({ name: 'Jane Roe', licenseNumber: 'L-1002', licenseCategory: 'B', licenseExpiryDate: new Date(Date.now() + 1000*60*60*24*30), email: 'jane.roe@transitops.com', contactNumber: '555-0101' });
   console.log('Drivers created');
 
   console.log('Seed complete');

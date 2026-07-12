@@ -22,6 +22,7 @@ const expenseRoutes = require('./routes/expenses');
 const reportRoutes = require('./routes/reports');
 const exportRoutes = require('./routes/export');
 const presenceRoutes = require('./routes/presence');
+const usersRoutes = require('./routes/users');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
@@ -33,6 +34,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/presence', presenceRoutes);
+app.use('/api/users', usersRoutes);
 
 app.use((req, res, next) => {
   res.status(404).json({ error: 'Not Found' });

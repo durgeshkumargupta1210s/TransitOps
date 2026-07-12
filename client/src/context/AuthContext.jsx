@@ -8,7 +8,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(()=>{ const u = localStorage.getItem('user'); if (u) setUser(JSON.parse(u)); },[]);
   const logout = () => { 
     try { socket.emit('logout'); disconnect(); } catch (e) { }
-    localStorage.removeItem('user'); localStorage.removeItem('token'); setUser(null); 
+    const refreshToken = localStorage.getItem('refreshToken');
+    try { if (refreshToken) fetch((import.meta.env.VITE_API_URL||'http://localhost:5000') + '/api/auth/logout', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ refreshToken }) }); } catch(e){}
+    localStorage.removeItem('user'); localStorage.removeItem('token'); localStorage.removeItem('refreshToken'); setUser(null); 
   }
   return <AuthContext.Provider value={{ user, setUser, logout }}>{children}</AuthContext.Provider>
 }

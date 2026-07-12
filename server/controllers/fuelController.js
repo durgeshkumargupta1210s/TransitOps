@@ -8,7 +8,13 @@ exports.listFuelLogs = async (req, res, next) => {
   try {
     const { page=1, limit=20, search } = req.query;
     const q = {};
-    if (search) q.$or = [{}, {}];
+    if (search) {
+      const numeric = Number(search);
+      q.$or = [
+        { vehicle: search },
+        ...(Number.isFinite(numeric) ? [{ liters: numeric }, { cost: numeric }] : []),
+      ];
+    }
     const items = await FuelLog.find(q).populate('vehicle').skip((page-1)*limit).limit(parseInt(limit));
     const total = await FuelLog.countDocuments(q);
     res.json({ items, total });

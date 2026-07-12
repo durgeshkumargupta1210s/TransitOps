@@ -1,6 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root { height: 100%; }
-body { @apply bg-gray-100 text-gray-900; }
+html,
+body,
+#root {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-background text-slate-900 font-sans transition-all duration-300;
+}
+
+.dark body {
+  @apply bg-slate-950 text-white;
+}
+
+.card {
+  @apply bg-white dark:bg-slate-900 rounded-xl shadow-card p-6;
+}
+
+.btn-primary {
+  @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition;
+}
+
+.input {
+  @apply w-full border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary;
+}
+
+.status {
+  @apply px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 20px;
+}

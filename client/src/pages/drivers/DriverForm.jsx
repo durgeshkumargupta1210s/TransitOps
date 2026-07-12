@@ -18,6 +18,7 @@ export default function DriverForm({ initial = {}, onSaved, onCancel }){
       <input {...register('licenseNumber')} placeholder="License Number" className="w-full p-2 border" />
       <input {...register('licenseCategory')} placeholder="Category" className="w-full p-2 border" />
       <input {...register('licenseExpiryDate')} placeholder="Expiry Date" type="date" className="w-full p-2 border" />
+      <input {...register('email')} placeholder="Email" type="email" className="w-full p-2 border" />
       <input {...register('contactNumber')} placeholder="Contact" className="w-full p-2 border" />
       <select {...register('status')} className="w-full p-2 border">
         <option>Available</option>

@@ -6,7 +6,14 @@ exports.listExpenses = async (req, res, next) => {
   try {
     const { page=1, limit=20, search } = req.query;
     const q = {};
-    if (search) q.$or = [{ type: new RegExp(search,'i') }];
+    if (search) {
+      const numeric = Number(search);
+      q.$or = [
+        { type: new RegExp(search,'i') },
+        { vehicle: search },
+        ...(Number.isFinite(numeric) ? [{ amount: numeric }] : []),
+      ];
+    }
     const items = await Expense.find(q).populate('vehicle').skip((page-1)*limit).limit(parseInt(limit));
     const total = await Expense.countDocuments(q);
     res.json({ items, total });

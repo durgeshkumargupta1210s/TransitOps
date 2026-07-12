@@ -22,6 +22,20 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 
     io.on('connection', socket => {
       console.log('socket connected', socket.id);
+      // attempt to authenticate using handshake token
+      (async () => {
+        try {
+          const token = socket.handshake?.auth?.token;
+          if (token) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+            const user = await User.findById(decoded.id).select('-password');
+            if (user) {
+              presence.add(socket.id, { id: user._id, name: user.name, email: user.email, role: user.role });
+              io.emit('presence:update', presence.getOnline());
+            }
+          }
+        } catch (e) { console.warn('socket handshake auth failed', e.message || e); }
+      })();
 
       socket.on('authenticate', async (token) => {
         try {
