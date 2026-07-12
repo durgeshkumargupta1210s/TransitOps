@@ -1,18 +1,30 @@
-import { io } from 'socket.io-client';
+import { io } from "socket.io-client";
 
-const URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:5001/api"
+).replace("/api", "");
 
-const socket = io(URL, { autoConnect: false });
+const socket = io(URL, {
+  autoConnect: false,
+  transports: ["websocket", "polling"],
+});
 
-const connect = () => {
-  const token = localStorage.getItem('token');
-  if (token) socket.auth = { token };
-  if (!socket.connected) socket.connect();
+export const connect = () => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    socket.auth = { token };
+  }
+
+  if (!socket.connected) {
+    socket.connect();
+  }
 };
 
-const disconnect = () => {
-  try { socket.disconnect(); } catch (e) { }
+export const disconnect = () => {
+  if (socket.connected) {
+    socket.disconnect();
+  }
 };
 
 export default socket;
-export { connect, disconnect };
