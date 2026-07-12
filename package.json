@@ -2,10 +2,22 @@
   "name": "transitops-workspace",
   "private": true,
   "version": "1.0.0",
+  "description": "TransitOps - Smart Transport Operations Platform",
   "scripts": {
-    "dev:server": "npm --prefix server run dev",
-    "dev:client": "npm --prefix client run dev",
     "dev": "node scripts/dev.js",
-    "seed": "npm --prefix server run seed"
-  }
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build",
+    "seed": "npm --prefix server run seed",
+    "install:all": "npm install && npm --prefix client install && npm --prefix server install"
+  },
+  "keywords": [
+    "transport",
+    "fleet",
+    "logistics",
+    "mern",
+    "hackathon"
+  ],
+  "author": "Durgesh Gupta",
+  "license": "MIT"
 }

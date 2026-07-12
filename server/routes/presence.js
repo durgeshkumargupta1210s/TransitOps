@@ -1,13 +1,25 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/auth');
-const presence = require('../utils/presence');
+const express = require("express");
 
-router.get('/', auth, async (req, res, next) => {
+const router = express.Router();
+
+const auth = require("../middleware/auth");
+
+const presence = require("../utils/presence");
+
+// ==============================
+// ONLINE USERS
+// ==============================
+
+router.get("/", auth, async (req, res, next) => {
   try {
-    const online = presence.getOnline();
-    res.json({ online });
-  } catch (err) { next(err); }
+    res.json({
+      success: true,
+      count: presence.getOnline().length,
+      online: presence.getOnline(),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

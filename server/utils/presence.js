@@ -1,19 +1,45 @@
-const presence = new Map();
+const onlineUsers = new Map();
 
 function add(socketId, user) {
-  presence.set(socketId, { socketId, ...user, lastSeen: new Date() });
+  onlineUsers.set(socketId, {
+    socketId,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    lastSeen: new Date(),
+  });
 }
 
 function remove(socketId) {
-  presence.delete(socketId);
+  onlineUsers.delete(socketId);
+}
+
+function update(socketId) {
+  if (onlineUsers.has(socketId)) {
+    onlineUsers.get(socketId).lastSeen = new Date();
+  }
 }
 
 function getOnline() {
-  return Array.from(presence.values()).map(u => ({ socketId: u.socketId, id: u.id, name: u.name, email: u.email, role: u.role, lastSeen: u.lastSeen }));
+  return [...onlineUsers.values()];
 }
 
 function findByUserId(userId) {
-  return Array.from(presence.values()).find(u => String(u.id) === String(userId));
+  return [...onlineUsers.values()].find(
+    (user) => String(user.id) === String(userId)
+  );
 }
 
-module.exports = { add, remove, getOnline, findByUserId };
+function count() {
+  return onlineUsers.size;
+}
+
+module.exports = {
+  add,
+  remove,
+  update,
+  getOnline,
+  findByUserId,
+  count,
+};

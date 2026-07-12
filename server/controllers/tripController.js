@@ -1,110 +1,471 @@
-const Trip = require('../models/trip');
-const Vehicle = require('../models/vehicle');
-const Driver = require('../models/driver');
+const Trip = require("../models/trip");
+const Vehicle = require("../models/vehicle");
+const Driver = require("../models/driver");
 
-// Create trip (Draft)
+// ==========================
+// CREATE TRIP
+// ==========================
 exports.createTrip = async (req, res, next) => {
   try {
     const body = req.body;
-    // Validate cargo weight vs vehicle capacity
+
     const vehicle = await Vehicle.findById(body.vehicle);
-    if (!vehicle) return res.status(400).json({ error: 'Vehicle not found' });
-    if (vehicle.status === 'Retired') return res.status(400).json({ error: 'Retired vehicles cannot be assigned' });
-    if (vehicle.status === 'In Shop') return res.status(400).json({ error: 'Vehicles in maintenance cannot be assigned' });
-    if (body.cargoWeight > vehicle.maximumLoadCapacity) return res.status(400).json({ error: 'Cargo exceeds vehicle capacity' });
+
+    if (!vehicle)
+      return res.status(404).json({
+        error: "Vehicle not found",
+      });
+
+    if (vehicle.status === "Retired")
+      return res.status(400).json({
+        error: "Retired vehicles cannot be assigned",
+      });
+
+    if (vehicle.status === "In Shop")
+      return res.status(400).json({
+        error: "Vehicle is under maintenance",
+      });
+
+    if (vehicle.status === "On Trip")
+      return res.status(400).json({
+        error: "Vehicle already on another trip",
+      });
+
+    if (body.cargoWeight > vehicle.maximumLoadCapacity)
+      return res.status(400).json({
+        error: "Cargo exceeds vehicle capacity",
+      });
 
     const driver = await Driver.findById(body.driver);
-    if (!driver) return res.status(400).json({ error: 'Driver not found' });
-    if (driver.status === 'Suspended') return res.status(400).json({ error: 'Suspended drivers cannot be assigned' });
-    if (new Date(driver.licenseExpiryDate) < new Date()) return res.status(400).json({ error: 'Driver license expired' });
 
-    const trip = await Trip.create(body);
-    res.json(trip);
-  } catch (err) { next(err); }
-}
+    if (!driver)
+      return res.status(404).json({
+        error: "Driver not found",
+      });
 
+    if (driver.status === "Suspended")
+      return res.status(400).json({
+        error: "Driver is suspended",
+      });
+
+    if (driver.status === "On Trip")
+      return res.status(400).json({
+        error: "Driver already assigned",
+      });
+
+    if (
+      new Date(driver.licenseExpiryDate) <
+      new Date()
+    )
+      return res.status(400).json({
+        error: "Driver license expired",
+      });
+
+    const trip = await Trip.create({
+      ...body,
+      status: "Draft",
+    });
+
+    const populatedTrip = await Trip.findById(
+      trip._id
+    ).populate("vehicle driver");
+
+    res.status(201).json(populatedTrip);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ==========================
+// LIST TRIPS
+// ==========================
 exports.listTrips = async (req, res, next) => {
   try {
-    const { page=1, limit=20, status, search } = req.query;
-    const q = {};
-    if (status) q.status = status;
-    if (search) q.$or = [ { source: new RegExp(search,'i') }, { destination: new RegExp(search,'i') } ];
-    const items = await Trip.find(q).populate('vehicle driver').skip((page-1)*limit).limit(parseInt(limit));
-    const total = await Trip.countDocuments(q);
-    res.json({ items, total });
-  } catch (err) { next(err); }
-}
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      status,
+    } = req.query;
 
-exports.getTrip = async (req, res, next) => { try { const t = await Trip.findById(req.params.id).populate('vehicle driver'); if (!t) return res.status(404).json({error:'Not found'}); res.json(t); } catch (err) { next(err); } }
+    const query = {};
 
-// Dispatch trip: set trip status to Dispatched and update vehicle/driver
-exports.dispatchTrip = async (req, res, next) => {
+    if (status) query.status = status;
+
+    if (search) {
+      query.$or = [
+        {
+          source: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+        {
+          destination: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
+    const items = await Trip.find(query)
+      .populate("vehicle driver")
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    const total =
+      await Trip.countDocuments(query);
+
+    res.json({
+      items,
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ==========================
+// GET TRIP
+// ==========================
+exports.getTrip = async (req, res, next) => {
   try {
-    const trip = await Trip.findById(req.params.id);
-    if (!trip) return res.status(404).json({ error: 'Trip not found' });
-    if (trip.status !== 'Draft') return res.status(400).json({ error: 'Only Draft trips can be dispatched' });
+    const trip = await Trip.findById(
+      req.params.id
+    ).populate("vehicle driver");
 
-    const vehicle = await Vehicle.findById(trip.vehicle);
-    const driver = await Driver.findById(trip.driver);
+    if (!trip)
+      return res.status(404).json({
+        error: "Trip not found",
+      });
 
-    if (!vehicle || !driver) return res.status(400).json({ error: 'Vehicle or driver invalid' });
-    if (vehicle.status !== 'Available') return res.status(400).json({ error: 'Vehicle not available' });
-    if (driver.status !== 'Available') return res.status(400).json({ error: 'Driver not available' });
-    if (new Date(driver.licenseExpiryDate) < new Date()) return res.status(400).json({ error: 'Driver license expired' });
-    if (trip.cargoWeight > vehicle.maximumLoadCapacity) return res.status(400).json({ error: 'Cargo exceeds vehicle capacity' });
+    res.json(trip);
+  } catch (err) {
+    next(err);
+  }
+};
 
-    trip.status = 'Dispatched';
+// ==========================
+// DISPATCH TRIP
+// ==========================
+exports.dispatchTrip = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const trip = await Trip.findById(
+      req.params.id
+    );
+
+    if (!trip)
+      return res.status(404).json({
+        error: "Trip not found",
+      });
+
+    if (trip.status !== "Draft")
+      return res.status(400).json({
+        error:
+          "Only Draft trips can be dispatched",
+      });
+
+    const vehicle = await Vehicle.findById(
+      trip.vehicle
+    );
+
+    const driver = await Driver.findById(
+      trip.driver
+    );
+
+    if (!vehicle || !driver)
+      return res.status(400).json({
+        error: "Invalid vehicle or driver",
+      });
+
+    if (vehicle.status === "Retired")
+      return res.status(400).json({
+        error: "Vehicle retired",
+      });
+
+    if (vehicle.status === "In Shop")
+      return res.status(400).json({
+        error: "Vehicle under maintenance",
+      });
+
+    if (vehicle.status === "On Trip")
+      return res.status(400).json({
+        error:
+          "Vehicle already assigned to another trip",
+      });
+
+    if (driver.status === "Suspended")
+      return res.status(400).json({
+        error: "Driver suspended",
+      });
+
+    if (driver.status === "On Trip")
+      return res.status(400).json({
+        error:
+          "Driver already assigned to another trip",
+      });
+
+    if (
+      new Date(driver.licenseExpiryDate) <
+      new Date()
+    )
+      return res.status(400).json({
+        error: "Driver license expired",
+      });
+
+    if (
+      trip.cargoWeight >
+      vehicle.maximumLoadCapacity
+    )
+      return res.status(400).json({
+        error: "Cargo exceeds vehicle capacity",
+      });
+
+    trip.status = "Dispatched";
+
     await trip.save();
-    vehicle.status = 'On Trip';
+
+    vehicle.status = "On Trip";
+
+    driver.status = "On Trip";
+
     await vehicle.save();
-    driver.status = 'On Trip';
+
     await driver.save();
 
-    res.json({ trip, vehicle, driver });
-  } catch (err) { next(err); }
-}
+        const updatedTrip = await Trip.findById(
+      trip._id
+    ).populate("vehicle driver");
 
-// Complete trip: set status to Completed and update vehicle/driver
-exports.completeTrip = async (req, res, next) => {
+    res.json(updatedTrip);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ==========================
+// COMPLETE TRIP
+// ==========================
+exports.completeTrip = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { actualDistance, fuelConsumed, finalOdometer, revenue } = req.body;
-    const trip = await Trip.findById(req.params.id);
-    if (!trip) return res.status(404).json({ error: 'Trip not found' });
-    if (trip.status !== 'Dispatched') return res.status(400).json({ error: 'Only Dispatched trips can be completed' });
+    const {
+      actualDistance,
+      fuelConsumed,
+      finalOdometer,
+      revenue,
+    } = req.body;
 
-    trip.actualDistance = actualDistance || trip.actualDistance;
-    trip.fuelConsumed = fuelConsumed || trip.fuelConsumed;
-    trip.finalOdometer = finalOdometer || trip.finalOdometer;
-    trip.revenue = revenue || trip.revenue;
-    trip.status = 'Completed';
+    const trip = await Trip.findById(
+      req.params.id
+    );
+
+    if (!trip)
+      return res.status(404).json({
+        error: "Trip not found",
+      });
+
+    if (trip.status !== "Dispatched")
+      return res.status(400).json({
+        error:
+          "Only dispatched trips can be completed",
+      });
+
+    const vehicle = await Vehicle.findById(
+      trip.vehicle
+    );
+
+    const driver = await Driver.findById(
+      trip.driver
+    );
+
+    if (
+      finalOdometer &&
+      vehicle &&
+      finalOdometer < vehicle.odometer
+    ) {
+      return res.status(400).json({
+        error:
+          "Final odometer cannot be less than current odometer",
+      });
+    }
+
+    trip.actualDistance =
+      actualDistance ?? trip.actualDistance;
+
+    trip.fuelConsumed =
+      fuelConsumed ?? trip.fuelConsumed;
+
+    trip.finalOdometer =
+      finalOdometer ?? trip.finalOdometer;
+
+    trip.revenue =
+      revenue ?? trip.revenue;
+
+    trip.status = "Completed";
+
     await trip.save();
 
-    const vehicle = await Vehicle.findById(trip.vehicle);
-    const driver = await Driver.findById(trip.driver);
-    if (vehicle && vehicle.status !== 'Retired') vehicle.status = 'Available';
-    if (vehicle) await vehicle.save();
-    if (driver) { driver.status = 'Available'; await driver.save(); }
+    if (vehicle) {
+      if (finalOdometer)
+        vehicle.odometer = finalOdometer;
 
-    res.json({ trip, vehicle, driver });
-  } catch (err) { next(err); }
-}
+      if (vehicle.status !== "Retired")
+        vehicle.status = "Available";
 
-// Cancel trip: set status to Cancelled and update vehicle/driver
-exports.cancelTrip = async (req, res, next) => {
+      await vehicle.save();
+    }
+
+    if (driver) {
+      driver.status = "Available";
+      await driver.save();
+    }
+
+    const updatedTrip = await Trip.findById(
+      trip._id
+    ).populate("vehicle driver");
+
+    res.json(updatedTrip);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ==========================
+// CANCEL TRIP
+// ==========================
+exports.cancelTrip = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const trip = await Trip.findById(req.params.id);
-    if (!trip) return res.status(404).json({ error: 'Trip not found' });
-    if (trip.status === 'Completed' || trip.status === 'Cancelled') return res.status(400).json({ error: 'Cannot cancel' });
+    const trip = await Trip.findById(
+      req.params.id
+    );
 
-    trip.status = 'Cancelled';
+    if (!trip)
+      return res.status(404).json({
+        error: "Trip not found",
+      });
+
+    if (
+      trip.status === "Completed" ||
+      trip.status === "Cancelled"
+    ) {
+      return res.status(400).json({
+        error:
+          "Completed or cancelled trips cannot be cancelled again",
+      });
+    }
+
+    trip.status = "Cancelled";
+
     await trip.save();
 
-    const vehicle = await Vehicle.findById(trip.vehicle);
-    const driver = await Driver.findById(trip.driver);
-    if (vehicle && vehicle.status !== 'Retired') vehicle.status = 'Available';
-    if (vehicle) await vehicle.save();
-    if (driver) { driver.status = 'Available'; await driver.save(); }
+    const vehicle = await Vehicle.findById(
+      trip.vehicle
+    );
 
-    res.json({ trip, vehicle, driver });
-  } catch (err) { next(err); }
-}
+    const driver = await Driver.findById(
+      trip.driver
+    );
+
+    if (vehicle) {
+      if (vehicle.status !== "Retired") {
+        vehicle.status = "Available";
+      }
+
+      await vehicle.save();
+    }
+
+    if (driver) {
+      driver.status = "Available";
+      await driver.save();
+    }
+
+    const updatedTrip = await Trip.findById(
+      trip._id
+    ).populate("vehicle driver");
+
+    res.json(updatedTrip);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ==========================
+// UPDATE TRIP
+// ==========================
+exports.updateTrip = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const trip =
+      await Trip.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+          new: true,
+          runValidators: true,
+        }
+      ).populate("vehicle driver");
+
+    if (!trip)
+      return res.status(404).json({
+        error: "Trip not found",
+      });
+
+    res.json(trip);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ==========================
+// DELETE TRIP
+// ==========================
+exports.deleteTrip = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const trip = await Trip.findById(
+      req.params.id
+    );
+
+    if (!trip)
+      return res.status(404).json({
+        error: "Trip not found",
+      });
+
+    if (trip.status === "Dispatched")
+      return res.status(400).json({
+        error:
+          "Cannot delete an active trip",
+      });
+
+    await trip.deleteOne();
+
+    res.json({
+      message:
+        "Trip deleted successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
